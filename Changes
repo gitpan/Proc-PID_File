@@ -1,5 +1,9 @@
 Revision history for Perl extension Proc::PID_File.
 
+0.05 Wed Jan 23 01:09:28 2002
+	- remove mtime stuff
+	- interface change, now non-OO
+
 0.04 Thu Jan 10 21:08:34 2002
 	- instead of $pid->active only returning 1 for true, it will simply
 	  return the pid of the active process. Since the pid will never be 0,

@@ -8,9 +8,9 @@
 # Change 1..1 below to 1..last_test_to_print .
 # (It may become useful if the test is moved to ./t subdirectory.)
 
-BEGIN { $| = 1; print "1..9\n"; }
+BEGIN { $| = 1; print "Testing with -T\n"; print "1..12\n"; }
 END {print "not ok 1\n" unless $loaded;}
-BEGIN { require "./PID_File.pm"; }
+BEGIN { require "./blib/lib/Proc/PID_File.pm"; import Proc::PID_File; }
 $loaded = 1;
 print "ok 1\n";
 
@@ -24,43 +24,58 @@ unlink "test.pid";
 
 sleep 1;
 
-# object creation
-$p = Proc::PID_File->new(path=>"test.pid");
-print $p ? "ok":"not ok", " 2\n";
-exit 1 if !$p;
+if (fork==0) {
+	# pid file does not exist yet, so we can hold it
+	print hold_pid_file("test.pid") ? "not ok":"ok", " 2\n";
 
-# object init
-if (!$p->init) {
-	print "not ok 3";
-	if ($!) { print ": $!\n" }
-	print "\n";
-	exit 1;
-} else { print "ok 3\n" }
+	# the pid file should exist now
+	print -f "test.pid" ? "ok":"not ok", " 3\n";
+	
+	if (fork==0) {
+		# another process wants to hold it, so surely it can't
+		print hold_pid_file("test.pid") ? "ok":"not ok", " 4\n";
 
-# active() test 1
-print $p->active ? "not ok":"ok", " 4\n";
+		# the pid file still exists...
+		print -f "test.pid" ? "ok":"not ok", " 5\n";
+		exit;
+	} else {
+		wait;
+	}
+	
+	# but now it's been deleted by the child
+	print -f "test.pid" ? "not ok":"ok", " 6\n";
+	exit;
+} else {
+	wait;
+}
 
-# 2nd object creation
-$p2 = Proc::PID_File->new(path=>"test.pid");
-print $p2 ? "ok":"not ok", " 5\n";
-exit 1 if !$p2;
+if (fork==0) {
+	# pid file does not exist yet, so we can hold it
+	print hold_pid_file("test.pid") ? "not ok":"ok", " 7\n";
 
-utime $^T-1, $^T-1, "test.pid";
+	# the pid file should exist now
+	print -f "test.pid" ? "ok":"not ok", " 8\n";
+	
+	if (fork==0) {
+		# another process wants to hold it, so surely it can't
+		print hold_pid_file("test.pid") ? "ok":"not ok", " 9\n";
 
-# 2nd object init
-if (!$p2->init) {
-	print "not ok 6";
-	if ($!) { print ": $!\n" }
-	print "\n";
-	exit 1;
-} else { print "ok 6\n" }
+		# the pid file still exists
+		print -f "test.pid" ? "ok":"not ok", " 10\n";
+		
+		# we release the pid file so it will not be automatically deleted
+		release_the_pid_file();
+		exit;
+	} else {
+		wait;
+	}
+	
+	# now the pid file should still exist
+	print -f "test.pid" ? "ok":"not ok", " 11\n";
+	exit;
+} else {
+	wait;
+}
 
-# active() test 2
-print $p2->active ? "ok":"not ok", " 7\n";
-
-# test automatic file deletion
-undef $p2;
-print -f "test.pid" ? "ok":"not ok", " 8\n";
-undef $p;
-print -f "test.pid" ? "not ok":"ok", " 9\n";
-
+# the pid file should not exist now
+print -f "test.pid" ? "not ok":"ok", " 12\n";
