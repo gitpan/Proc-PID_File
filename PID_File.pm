@@ -1,23 +1,33 @@
 package Proc::PID_File;
-use Fcntl;
+use Fcntl qw(:DEFAULT :flock);
 use Carp;
 
-use vars '$VERSION';
-$VERSION = '0.01';
+use strict;
+use vars qw($VERSION);
+$VERSION='0.02';
 
 sub new {
 	my $proto = shift;
 	my $class = ref($proto) || $proto;
 	my %args = @_;
 
-	if (!$args{path}) { croak "new: 'path' not specified!" }
-	bless { path=>$args{path} }, $class;
+	if (!exists($args{path})) {
+		croak "new: argument 'path' not specified";
+	}
+
+	bless {
+		path => $args{path},
+		initialized => 0,
+		active => 0,
+	}, $class;
 }
 
-sub create {
+sub init {
 	my $self = shift;
 	my $path = $self->{path};
 	local *FH;
+
+	return 1 if $self->{initialized};
 
 	sysopen FH, $path, O_RDWR|O_CREAT or return;
 	flock FH, LOCK_EX;
@@ -27,22 +37,37 @@ sub create {
 
 	my $new_pid = "$$\n";
 
-	if ($mtime > 0 and $pid and kill 0, $pid) {
-		$self->{previously_exists} = 1;
-		return 1;
+#	print "\$mtime is $mtime, \$\$ = $$, \$pid = $pid\n";
+
+	if ($mtime > 0 and $pid and kill 0, $pid) { # active PID file
+		$self->{active} = 1;
+		close FH or return;
 	} else {
 		sysseek  FH, 0, 0;
 		truncate FH, 0;
 		syswrite FH, $new_pid, length($new_pid);
 		close FH or return;
 	}
+	$self->{initialized} = 1;
 }
 
-sub previously_exists {
+# synonym
+sub initialize { init(@_) }
+
+# compatibility with 0.01
+sub create { init(@_) }
+
+sub active {
 	my $self = shift;
-
-	$self->{previously_exists};
+	if (!defined($self->{initialized})) { croak "active: call 'init()' first" }
+	return $self->{active};
 }
+
+# synonym
+sub is_active { active(@_) }
+
+# compatibility with 0.01
+sub previously_exists { active(@_) }
 
 sub delete {
 	my $self = shift;
@@ -51,8 +76,15 @@ sub delete {
 
 	sysopen FH, $path, O_RDWR or return;
 	flock FH,LOCK_EX;
-	unlink $path or return;
+	unlink $path and close FH or return;
 	1;
+}
+
+sub DESTROY {
+#	print "DESTROY called\n";
+	my $self = shift;
+
+	$self->delete unless $self->{active};
 }
 
 1;
@@ -60,29 +92,39 @@ __END__
 
 =head1 NAME
 
-Proc::PID_File - manage PID files
+Proc::PID_File - check whether a self process is already running
 
 =head1 SYNOPSIS
 
  use Proc::PID_File;
 
- $pid_file = Proc::PID_File->new(path=>"/var/log/mydaemon.pid");
- if (!$pid_file->create) { die "Can't create pid file"; }
- if ($pid_file->previously_exists) { die "I was already started."; }
-
- $SIG{INT} = $SIG{TERM} = sub { $pid_file->delete; exit; };
+ $Pid_File = Proc::PID_File->new(path=>"/var/run/mydaemon.pid");
+ if (!$Pid_File->init)  { die "Can't open/create pid file: $!" }
+ if ($Pid_File->active) { die "mydaemon is already running" }
 
  # go ahead, daemonize...
 
 =head1 DESCRIPTION
 
-This module provides a simple interface to manage PID files. A PID file is a
-place to store the process ID number of a process, created by the process
-itself when it starts. A valid (i.e. not stale) PID file indicates that the
-process instance is still alive, and can indicate that the program should
-not start another instance when invoked. PID files are also used to record
-the process ID number of daemon processes so that they can be signalled
-(e.g. TERM-ed or HUP-ed).
+A pid file is a file that contain, guess what, pid. Pids are written down to
+files so that:
+
+=over 4
+
+=item *
+
+a program can know whether an instance of itself is currently running
+
+=item *
+
+other processes can know the pid of a running program
+
+=back
+
+This module can be used so that your script can do the former.
+
+If a pid file is created by the init() method, it will be automatically
+deleted when the object is destroyed.
 
 =head1 AUTHOR
 
