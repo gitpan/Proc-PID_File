@@ -4,7 +4,7 @@ use Carp;
 
 use strict;
 use vars qw($VERSION);
-$VERSION='0.02';
+$VERSION='0.021';
 
 sub new {
 	my $proto = shift;
@@ -32,12 +32,12 @@ sub init {
 	sysopen FH, $path, O_RDWR|O_CREAT or return;
 	flock FH, LOCK_EX;
 
-	my $mtime = -M $path;
+	my $mtime = $^T - (stat $path)[9];
 	my $pid = <FH>;
 
 	my $new_pid = "$$\n";
 
-#	print "\$mtime is $mtime, \$\$ = $$, \$pid = $pid\n";
+#	print "\$mtime is $mtime, \$\$ = $$, \$pid = $pid, kill(0, \$pid) = ${\(kill 0,$pid)}\n";
 
 	if ($mtime > 0 and $pid and kill 0, $pid) { # active PID file
 		$self->{active} = 1;

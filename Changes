@@ -1,5 +1,10 @@
 Revision history for Perl extension Proc::PID_File.
 
+0.021 Mon Oct 30 20:49:20 2000
+	- change method of getting file's age from -M to stat() because -M
+	  returns a negative number on Solaris for files < 1 day old (reported
+	  by Tom Leoboldt)
+
 0.02  Wed Sep  6 17:24:52 2000
 	- interface change
 	- added a test suite
