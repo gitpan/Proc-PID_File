@@ -4,7 +4,7 @@ use Carp;
 
 use strict;
 use vars qw($VERSION);
-$VERSION='0.021';
+$VERSION='0.03';
 
 sub new {
 	my $proto = shift;
@@ -33,10 +33,8 @@ sub init {
 	flock FH, LOCK_EX;
 
 	my $mtime = $^T - (stat $path)[9];
-	my $pid = <FH>;
-
-	my $new_pid = "$$\n";
-
+	my ($pid) = <FH> =~ /^(\d+)/;
+	
 #	print "\$mtime is $mtime, \$\$ = $$, \$pid = $pid, kill(0, \$pid) = ${\(kill 0,$pid)}\n";
 
 	if ($mtime > 0 and $pid and kill 0, $pid) { # active PID file
@@ -45,10 +43,11 @@ sub init {
 	} else {
 		sysseek  FH, 0, 0;
 		truncate FH, 0;
-		syswrite FH, $new_pid, length($new_pid);
+		syswrite FH, "$$\n", length("$$\n");
 		close FH or return;
 	}
 	$self->{initialized} = 1;
+	$self->{pid} = $$;
 }
 
 # synonym
@@ -84,7 +83,7 @@ sub DESTROY {
 #	print "DESTROY called\n";
 	my $self = shift;
 
-	$self->delete unless $self->{active};
+	$self->delete unless ($self->{pid} != $$ or $self->{active});
 }
 
 1;
@@ -124,11 +123,13 @@ other processes can know the pid of a running program
 This module can be used so that your script can do the former.
 
 If a pid file is created by the init() method, it will be automatically
-deleted when the object is destroyed.
+deleted when the object is destroyed (the forked child's object will not
+delete the pid file -- since 0.03).
 
 =head1 AUTHOR
 
-Copyright (C) 2000, Steven Haryanto <steven@haryan.to>. All rights reserved.
+Copyright (C) 2000-1, Steven Haryanto <steven@haryan.to>. All rights
+reserved.
 
 This module is free software; you may redistribute it and/or modify it under
 the same terms as Perl itself.
@@ -137,3 +138,5 @@ the same terms as Perl itself.
 
 000731 - first hack
 
+010522 - incorporate a couple of suggestions. thanks to HASANT and Brad
+         Hilton.

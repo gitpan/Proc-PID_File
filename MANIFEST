@@ -3,5 +3,6 @@ Makefile.PL
 MANIFEST
 PID_File.pm
 test.pl
+test-T.pl
 README
 simple.pl

@@ -1,5 +1,10 @@
 Revision history for Perl extension Proc::PID_File.
 
+0.03 Wed May 23 01:23:40 2001
+	- make the module work under -T (HASANT)
+	- make the module work with forking servers -- child processes's DESTROY
+	  now won't delete the pid file (Brad Hilton)
+
 0.021 Mon Oct 30 20:49:20 2000
 	- change method of getting file's age from -M to stat() because -M
 	  returns a negative number on Solaris for files < 1 day old (reported
