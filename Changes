@@ -1,5 +1,11 @@
 Revision history for Perl extension Proc::PID_File.
 
+0.04 Thu Jan 10 21:08:34 2002
+	- instead of $pid->active only returning 1 for true, it will simply
+	  return the pid of the active process. Since the pid will never be 0,
+	  active will still be true and work as documented. (thanks to Paul
+	  Baker)
+
 0.03 Wed May 23 01:23:40 2001
 	- make the module work under -T (HASANT)
 	- make the module work with forking servers -- child processes's DESTROY

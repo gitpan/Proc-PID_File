@@ -4,7 +4,7 @@ use Carp;
 
 use strict;
 use vars qw($VERSION);
-$VERSION='0.03';
+$VERSION='0.04';
 
 sub new {
 	my $proto = shift;
@@ -38,7 +38,7 @@ sub init {
 #	print "\$mtime is $mtime, \$\$ = $$, \$pid = $pid, kill(0, \$pid) = ${\(kill 0,$pid)}\n";
 
 	if ($mtime > 0 and $pid and kill 0, $pid) { # active PID file
-		$self->{active} = 1;
+		$self->{active} = $pid;
 		close FH or return;
 	} else {
 		sysseek  FH, 0, 0;
